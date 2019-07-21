@@ -419,9 +419,14 @@ TEST(TimeAddFoldExpression, SimpleFold)
 
 int main(int argc, char *argv[])
 {
+    bool values_specified = false;
+
+    bool option_reading_from_file = false;
     bool option_verbose = false;
 
     std::vector<std::string> values;
+
+    std::string filename;
 
     Options::options_description generic("  Generic Options");
     generic.add_options()
@@ -437,6 +442,7 @@ int main(int argc, char *argv[])
     Options::options_description config("  Configuration Options");
     config.add_options()
         ("time-value", Options::value<std::vector<std::string>>(&values)->composing(), "Time value(s)")
+        ("filename", Options::value<std::string>(&filename), "Read times from file")
     ;
 
     Options::options_description desc("Program Options");
@@ -469,14 +475,23 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    if (!vm.count("time-value")) {
+    if (vm.count("verbose")) {
+        option_verbose = true;
+    }
+
+    if (vm.count("time-value")) {
+        values_specified = true;
+    }
+
+    if (vm.count("filename")) {
+        values_specified = true;
+        option_reading_from_file = true;
+    }
+
+    if (!values_specified) {
         std::cerr << "No times specified." << IO::endl << IO::endl;
         std::cout << desc << IO::endl;
         std::exit(EXIT_FAILURE);
-    }
-
-    if (vm.count("verbose")) {
-        option_verbose = true;
     }
 
     #ifndef NDEBUG
@@ -484,6 +499,37 @@ int main(int argc, char *argv[])
     #endif
 
     Time aggregate;
+
+    if (option_reading_from_file) {
+        if (option_verbose) {
+            std::clog << "Reading time values from file: " << filename << IO::endl;
+        }
+
+        std::ifstream input_file(filename, std::ios::in);
+
+        if (!input_file) {
+            std::cerr << "Unable to open file: " << filename << IO::endl;
+            std::exit(EXIT_FAILURE);
+        }
+
+        std::string time_string;
+
+        while (!input_file.eof()) {
+            // Read time string
+            input_file >> time_string;
+
+            const Time time(time_string);
+            aggregate.Add(time);
+
+            if (option_verbose) {
+                std::cout << time << IO::endl;
+            }
+
+            time_string = "";
+        }
+
+        input_file.close();
+    }
 
     for (const auto& value : values) {
         const Time time(value);
