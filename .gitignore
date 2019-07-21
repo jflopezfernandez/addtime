@@ -36,3 +36,6 @@ addtime
 # Visual Studio Code
 /.vscode/
 
+# Miscellaneous Files
+times
+
